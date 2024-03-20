@@ -1,24 +1,29 @@
-%{!?python_sitelib: %define python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")}
-
 Summary: A set of tools to gather troubleshooting information from a system
 Name: sos
-Version: 3.3
+Version: 4.7.0
 Release: 1%{?dist}
-Group: Applications/System
-Source0: http://people.redhat.com/breeves/sos/releases/sos-%{version}.tar.gz
-License: GPLv2+
-BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
+Source0: https://github.com/sosreport/sos/archive/%{name}-%{version}.tar.gz
+License: GPL-2.0-or-later
 BuildArch: noarch
-Url: http://fedorahosted.org/sos
-BuildRequires: python-devel
-BuildRequires: gettext
-BuildRequires: python-six
-Requires: libxml2-python
-Requires: rpm-python
-Requires: tar
-Requires: bzip2
-Requires: xz
-Requires: python-six
+Url: https://github.com/sosreport/sos
+BuildRequires: python3-devel
+BuildRequires: python3-setuptools
+Requires: python3-rpm
+Requires: python3-pexpect
+%if 0%{?rhel} && 0%{?rhel} < 10
+Requires: python3-setuptools
+%else
+Requires: python3-packaging
+%endif
+Recommends: python3-magic
+# Mandatory just for uploading to a SFTP server:
+Recommends: python3-requests
+Recommends: python3-pyyaml
+Obsoletes: sos-collector <= 1.9
+# For the _tmpfilesdir macro.
+BuildRequires: systemd
+# Mandatory just for uploading to an S3 bucket:
+Recommends: python3-boto3
 
 %description
 Sos is a set of tools that gathers information about system
@@ -27,31 +32,130 @@ diagnostic purposes and debugging. Sos is commonly used to help
 support technicians and developers.
 
 %prep
-%setup -q
+%setup -qn %{name}-%{version}
+
+%if 0%{?fedora} >= 39
+%generate_buildrequires
+%pyproject_buildrequires
+%endif
 
 %build
-make
+%if 0%{?fedora} >= 39
+%pyproject_wheel
+%else
+%py3_build
+%endif
 
 %install
-rm -rf ${RPM_BUILD_ROOT}
-make DESTDIR=${RPM_BUILD_ROOT} install
+%if 0%{?fedora} >= 39
+%pyproject_install
+%pyproject_save_files sos
+%else
+%py3_install '--install-scripts=%{_sbindir}'
+%endif
+
+install -d -m 755 %{buildroot}%{_sysconfdir}/%{name}
+install -d -m 700 %{buildroot}%{_sysconfdir}/%{name}/cleaner
+install -d -m 755 %{buildroot}%{_sysconfdir}/%{name}/presets.d
+install -d -m 755 %{buildroot}%{_sysconfdir}/%{name}/groups.d
+install -d -m 755 %{buildroot}%{_sysconfdir}/%{name}/extras.d
+install -d -m 755 %{buildroot}%{_tmpfilesdir}
+install -m 644 %{name}.conf %{buildroot}%{_sysconfdir}/%{name}/%{name}.conf
+install -m 644 tmpfiles/tmpfilesd-sos-rh.conf %{buildroot}%{_tmpfilesdir}/%{name}.conf
+
+rm -rf %{buildroot}/usr/config/
+
 %find_lang %{name} || echo 0
 
-%clean
-rm -rf ${RPM_BUILD_ROOT}
-
-%files -f %{name}.lang
-%defattr(-,root,root,-)
+# internationalization is currently broken. Uncomment this line once fixed.
+# %%files -f %%{name}.lang
+%files
+%if 0%{?fedora} >= 39
+%{_bindir}/sos
+%{_bindir}/sosreport
+%{_bindir}/sos-collector
+%else
+%{_sbindir}/sos
 %{_sbindir}/sosreport
-%{_datadir}/%{name}
-%{python_sitelib}/*
+%{_sbindir}/sos-collector
+%endif
+%dir /etc/sos/cleaner
+%dir /etc/sos/presets.d
+%dir /etc/sos/extras.d
+%dir /etc/sos/groups.d
+%{_tmpfilesdir}/%{name}.conf
+%{python3_sitelib}/*
 %{_mandir}/man1/*
 %{_mandir}/man5/*
-%doc AUTHORS README.md LICENSE
-%doc /usr/share/doc/sos/html
-%config(noreplace) %{_sysconfdir}/sos.conf
+%doc AUTHORS README.md
+%license LICENSE
+%config(noreplace) %{_sysconfdir}/sos/sos.conf
 
 %changelog
+* Mon Feb 19 2024 Jake Hunsaker <jacob.r.hunsaker@gmail.com> = 4.7.0
+- New upstream release
+
+* Wed Jan 10 2024 Pavel Moravec <pmoravec@redhat.com> = 4.6.1
+- New upstream release
+
+* Thu Aug 17 2023 Jake Hunsaker <jacob.r.hunsaker@gmail.com> = 4.6.0
+- New upstream release
+
+* Thu Jul 20 2023 Jake Hunsaker <jacob.r.hunsaker@gmail.com> = 4.5.6
+- New upstream release
+
+* Fri Jun 23 2023 Jake Hunsaker <jacob.r.hunsaker@gmail.com> = 4.5.5
+- New upstream release
+
+* Fri May 26 2023 Jake Hunsaker <jhunsake@redhat.com> = 4.5.4
+- New upstream release
+
+* Fri Apr 28 2023 Jake Hunsaker <jhunsake@redhat.com> = 4.5.3
+- New upstream release
+
+* Fri Mar 31 2023 Jake Hunsaker <jhunsake@redhat.com> = 4.5.2
+- New upstream release
+- Migrated to SPDX license
+
+* Wed Mar 01 2023 Jake Hunsaker <jhunsake@redhat.com> = 4.5.1
+- New upstream release
+
+* Wed Feb 01 2023 Jake Hunsaker <jhunsake@redhat.com> = 4.5.0
+- New upstream release
+
+* Mon Aug 15 2022 Jake Hunsaker <jhunsake@redhat.com> = 4.4
+- New upstream release
+
+* Mon Feb 14 2022 Jake Hunsaker <jhunsake@redhat.com> = 4.3
+- New upstream release
+
+* Mon Aug 16 2021 Jake Hunsaker <jhunsake@redhat.com> = 4.2
+- New upstream release
+
+* Thu Feb 25 2021 Jake Hunsaker <jhunsake@redhat.com> = 4.1
+- New upstream release
+
+* Mon Aug 17 2020 Jake Hunsaker <jhunsake@redhat.com> = 4.0
+- New upstream release
+
+* Fri Feb 14 2020 Bryn M. Reeves <bmr@redhat.com> = 3.9
+- New upstream release
+
+* Tue Aug 27 2019 Pavel Moravec <pmoravec@redhat.com> = 3.8
+- New upstream release
+
+* Wed Mar 27 2019 Bryn M. Reeves <bmr@redhat.com> = 3.7
+- New upstream release
+
+* Mon Jun 25 2018 Bryn M. Reeves <bmr@redhat.com> = 3.6
+- New upstream release
+
+* Thu Nov 02 2017 Bryn M. Reeves <bmr@redhat.com> = 3.5
+- New upstream release
+
+* Tue Mar 28 2017 Bryn M. Reeves <bmr@redhat.com> = 3.4
+- New upstream release
+
 * Wed Jun 29 2016 Bryn M. Reeves <bmr@redhat.com> = 3.3
 - New upstream release
 

@@ -1,8 +1,7 @@
-``sos.reporting`` --- Reporting Interface
-=========================================
+``sos.report.reporting`` --- Reporting Interface
+================================================
 
-.. automodule:: sos.reporting
-    :noindex:
+.. automodule:: sos.report.reporting
     :members:
     :undoc-members:
     :show-inheritance:

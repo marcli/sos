@@ -3,6 +3,7 @@
 *swp*
 *.pyc
 *.sw*
+*.DS_Store
 tags
 buildjar/
 gpgkeys/rhsupport.*
@@ -16,4 +17,14 @@ venv
 MANIFEST
 build/
 dist/
+*sos.egg*
 docs/_build
+
+# Pycharm
+.idea/
+
+# debian files
+debian/sosreport*
+debian/files
+debian/.debhelper
+debian/debhelper-build-stamp
